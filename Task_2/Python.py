@@ -91,7 +91,6 @@ else:
 df_balances = calculate_df_balances(df_scheduled, df_actual)
 
 
-
 def question_1(df_balances):
     """
     Calculate the percent of loans that defaulted as per the type 1 default definition.
@@ -105,7 +104,6 @@ def question_1(df_balances):
     """
 
     # Get truth value of scheduled repayment < actual repayment for each monthly repayment of each loan
-    # TODO: Check if each record is really unique (loanID, Month)
     default_rate_percent = np.average(df_balances['ScheduledRepayment'] < df_balances['ActualRepayment']) * 100
     return default_rate_percent
 
@@ -125,15 +123,15 @@ def question_2(df_scheduled, df_balances):
     """
 
     # group by LoanID with total payments of year
-    yearly_repayments = df_balances\
-        .groupby('LoanID')\
+    yearly_repayments = df_balances \
+        .groupby('LoanID') \
         .agg(
-            expected_total = ('ScheduledRepayment', 'sum'),
-            actual_total=('ActualRepayment', 'sum')
-        )
+        expected_total=('ScheduledRepayment', 'sum'),
+        actual_total=('ActualRepayment', 'sum')
+    )
 
     # check which loans have not paid 85% of loan; then get average
-    default_rate_percent = np.average(yearly_repayments.expected_total < (1-0.15)*yearly_repayments.actual_total) * 100
+    default_rate_percent = np.average( yearly_repayments.expected_total < (1-0.15)*yearly_repayments.actual_total ) * 100
     return default_rate_percent
 
 
@@ -152,6 +150,25 @@ def question_3(df_balances):
 
     """
 
+    # create DataFrame with the total of all loans per month
+    loans_total_per_month = df_balances.groupby('Month')\
+        .agg(
+            expected_total=('ScheduledRepayment', 'sum'),
+            actual_total=('ActualRepayment', 'sum'),
+            balance_total=('LoanBalanceStart', 'sum')
+        )
+
+    # calculate Single Monthly Mortality (SMM) for each month on total loans
+    smm = (loans_total_per_month.actual_total - loans_total_per_month.expected_total).clip(lower=0) \
+          / loans_total_per_month.balance_total
+
+    # get geometric mean of SMMs over the year
+    smm_mean = (smm + 1).product()**(1/12) - 1
+
+    # get Conditional Prepayment Rate (CPR) for the year
+    cpr = 1 - (1 - smm_mean)**12
+
+    cpr_percent = cpr * 100
     return cpr_percent
 
 
@@ -171,4 +188,15 @@ def question_4(df_balances):
 
     """
 
+    # Type 2 seems more useful because the probability is more accurate with a larger sample time range.
+    # Additionally, repayments that were not met may have been compensated for in a later month.
+
+    # Type 2 default rate
+    probability_of_default = question_2(None, df_balances)/100
+
+    # Sum of all loan balances at end of last month
+    total_loan_balance = df_balances[ df_balances.Month == 12 ].LoanBalanceEnd.sum()
+
+    recovery_rate = 0.8
+    total_loss = probability_of_default * total_loan_balance * (1 - recovery_rate)
     return total_loss
