@@ -94,6 +94,7 @@ df_balances = calculate_df_balances(df_scheduled, df_actual)
 def question_1(df_balances):
     """
     Calculate the percent of loans that defaulted as per the type 1 default definition.
+    A type 1 default occurs on a loan when any scheduled monthly repayment is not met in full.
 
     Args:
         df_balances (DataFrame): Dataframe created from the 'calculate_df_balances()' function
@@ -103,7 +104,7 @@ def question_1(df_balances):
 
     """
 
-    # Get truth value of scheduled repayment < actual repayment for each monthly repayment of each loan
+    # Get truth value of scheduled repayment < actual repayment for each record (each monthly repayment of each loan)
     default_rate_percent = np.average(df_balances['ScheduledRepayment'] < df_balances['ActualRepayment']) * 100
     return default_rate_percent
 
@@ -122,7 +123,7 @@ def question_2(df_scheduled, df_balances):
 
     """
 
-    # group by LoanID with total payments of year
+    # group by LoanID with total payments (of each month) of year
     yearly_repayments = df_balances \
         .groupby('LoanID') \
         .agg(
@@ -130,7 +131,7 @@ def question_2(df_scheduled, df_balances):
         actual_total=('ActualRepayment', 'sum')
     )
 
-    # check which loans have not paid 85% of loan; then get average
+    # check which loans have not paid at least 85% of loan; then get average
     default_rate_percent = np.average( yearly_repayments.expected_total < (1-0.15)*yearly_repayments.actual_total ) * 100
     return default_rate_percent
 
@@ -189,7 +190,8 @@ def question_4(df_balances):
     """
 
     # Type 2 seems more useful because the probability is more accurate with a larger sample time range.
-    # Additionally, repayments that were not met may have been compensated for in a later month.
+    # Additionally, repayments that were not met in a month (classified as type 1 default)
+    # may have been compensated for in a later month.
 
     # Type 2 default rate
     probability_of_default = question_2(None, df_balances)/100

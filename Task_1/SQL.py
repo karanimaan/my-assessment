@@ -23,8 +23,9 @@ def question_1():
     Return the `Name`, `Surname` and `CustomerID`
     """
 
-    qry = """SELECT Name, Surname, CustomerID FROM customers"""
-
+    qry = """SELECT first(Name) AS Name, first(Surname) AS Surname, CustomerID FROM customers 
+        GROUP BY CustomerID HAVING count(CustomerID) > 1"""
+    # Filter only records having CustomerID appear more than once. `first` is used to get one of the duplicate values
     return qry
 
 
@@ -33,7 +34,7 @@ def question_2():
     Return the `Name`, `Surname` and `Income` of all female customers in the dataset in descending order of income
     """
 
-    qry = """SELECT Name, Surname, Income FROM customers WHERE Gender = 'Female'"""
+    qry = """SELECT Name, Surname, Income FROM customers WHERE Gender = 'Female' ORDER BY Income DESC"""
 
     return qry
 
@@ -45,10 +46,14 @@ def question_3():
     There is only 1 loan per customer ID.
     """
 
-    qry = """SELECT LoanTerm, 
-    SUM( CASE WHEN ApprovalStatus='Approved' THEN 1 ELSE 0 END )*100/COUNT(*) AS 'Approval Percentage'
-    FROM loans
-    GROUP BY LoanTerm"""
+    qry = """
+        SELECT 
+            LoanTerm, 
+            SUM(CASE WHEN ApprovalStatus='Approved' THEN 1 ELSE 0 END)*100/COUNT(*) AS 'Approval Percentage' 
+                -- add 1 to sum if Approval Status is Approved; then divide sum by number of loans in LoanTerm
+        FROM (SELECT DISTINCT * FROM loans)     -- Duplicates would affect result
+        GROUP BY LoanTerm
+    """
 
     return qry
 
@@ -59,18 +64,22 @@ def question_4():
     Return columns `CustomerClass` and `Count`
     """
 
-    qry = """SELECT CustomerClass, Count(*) as Count
-    FROM credit
-    GROUP BY CustomerClass"""
+    qry = """
+        SELECT CustomerClass, Count(*) as Count
+        FROM (SELECT DISTINCT * FROM credit)     -- Duplicates would affect result
+        GROUP BY CustomerClass
+    """
 
     return qry
 
 
 def question_5():
     """
-    Make use of the UPDATE function to amend/fix the following: Customers with a CreditScore between and including 600 to 650 must be classified as CustomerClass C.
+    Make use of the UPDATE function to amend/fix the following:
+    Customers with a CreditScore between and including 600 to 650 must be classified as CustomerClass C.
     """
 
     qry = """UPDATE credit SET CustomerClass = 'C' WHERE CreditScore BETWEEN 600 AND 650"""
+    # `BETWEEN` is inclusive of boundaries
 
     return qry
